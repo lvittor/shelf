@@ -41,7 +41,7 @@ force_grid_wrap = 0
 [tool.coverage]
     [tool.coverage.run]
 
-    source = ["src"]
+    source = ["shelf"]
     branch = true
     omit = ['']
 

@@ -1,4 +1,4 @@
-from src.main import foo
+from shelf.main import foo
 
 
 def test_foo():

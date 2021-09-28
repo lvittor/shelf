@@ -13,7 +13,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
-
 # builder-base is used to build dependencies
 FROM python-base as builder-base
 RUN apt-get update \
@@ -31,46 +30,36 @@ WORKDIR $PYSETUP_PATH
 COPY ./poetry.lock ./pyproject.toml ./
 RUN poetry install --no-dev 
 
-
 # 'development' stage installs all dev deps and can be used to develop code.
-# For example using docker-compose to mount local volume under /src
+# For example using docker-compose to mount local volume under /shelf
 FROM python-base as development
 
 # Copying poetry and venv into image
 COPY --from=builder-base $POETRY_HOME $POETRY_HOME
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 
-# Copying in our entrypoint
-COPY ./docker/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
 # venv already has runtime deps installed we get a quicker install
 WORKDIR $PYSETUP_PATH
 RUN poetry install
 
-WORKDIR /src
+WORKDIR /shelf
 COPY . .
-
 
 # 'lint' stage runs black and isort
 # running in check mode means build will fail if any linting errors occur
 FROM development AS lint
-RUN black --config ./pyproject.toml --check src tests
-RUN isort --settings-path ./pyproject.toml --check-only src tests
-
+RUN black --config ./pyproject.toml --check shelf tests
+RUN isort --settings-path ./pyproject.toml --check-only shelf tests
 CMD ["tail", "-f", "/dev/null"]
 
-
-# 'test' stage runs our unit tests with pytest and
-# coverage.  Build will fail if test coverage is under 95%
+# 'test' stage runs our unit tests with pytest and coverage.
 FROM development AS test
 RUN coverage run --rcfile ./pyproject.toml -m pytest ./tests
-RUN coverage report --fail-under 95
-
 
 # 'production' stage uses the clean 'python-base' stage and copyies
 # in only our runtime deps that were installed in the 'builder-base'
 FROM python-base as production
+COPY --from=builder-base $VENV_PATH $VENV_PATH
 
-COPY ./src /src
-WORKDIR /src
+COPY . /shelf
+WORKDIR /shelf
