@@ -65,8 +65,10 @@ def init():
 
 
 @cli.command()
-def commit():
-    click.echo("Before commiting, specify the following trailers: ")
+@click.option("--message", "-m", type=str, required=True)
+def commit(message):
+    a = message
+    click.echo(f"{a}")
 
 
 @cli.command()
