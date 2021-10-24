@@ -50,7 +50,7 @@ def init():
     config["trailers"] = []
     for trailer in trailers:
         while True:
-            response = input(trailer["name"] + " (Y/N) ").upper()
+            response = input(trailer["name"], "(Y/N): ").upper()
             if response in ["Y", "N"]:
                 break
         if response == "Y":
