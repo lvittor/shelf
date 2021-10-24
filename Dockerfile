@@ -40,10 +40,16 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 
 # venv already has runtime deps installed we get a quicker install
 WORKDIR $PYSETUP_PATH
-RUN poetry install
+RUN poetry install && apt-get update && apt-get install --no-install-recommends -y git nano
 
 WORKDIR /shelf
 COPY . .
+
+RUN git init && git config --local user.email "test@test.com" && git config --local user.name "test"
+
+RUN cd shelf && pip install --editable . 
+
+RUN cp shelf/hook_samples/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg
 
 # 'lint' stage runs black and isort
 # running in check mode means build will fail if any linting errors occur
