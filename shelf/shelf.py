@@ -1,6 +1,39 @@
+from pprint import pprint
+
 import click
+import inquirer
 import yaml
 
+questions = [
+    inquirer.Checkbox(
+        "trailers",
+        message="Select the trailers you want to add to your project. Use the arrows to toggle any one of them.",
+        choices=[
+            "Acked-by",
+            "Bug",
+            "CC",
+            "Change-Id",
+            "Closes",
+            "Closes-Bug",
+            "Co-Authored-By",
+            "DocImpact",
+            "Git-Dch",
+            "Implements",
+            "Partial-Bug",
+            "Related-Bug",
+            "Reported-by",
+            "SecurityImpact",
+            "Signed-off-by",
+            "Suggested-by",
+            "Tested-by",
+            "Thanks",
+            "UpgradeImpact",
+        ],
+        default=["Acked-by"],
+    ),
+]
+
+# TODO: erase after including descriptions in the choices list.
 trailers = [
     {
         "name": "Acked-by",
@@ -43,21 +76,12 @@ def cli():
 def init():
     click.echo("Initializing shelf repository")
     ### Creation of the config file
-    config = {}
+    config = {"trailers": []}
 
     ### Configuration for trailers
-    click.echo("Select the default trailers for your repository: ")
-    config["trailers"] = []
-    for trailer in trailers:
-        while True:
-            response = input(trailer["name"] + "(Y/N): ").upper()
-            if response in ["Y", "N"]:
-                break
-        if response == "Y":
-            config["trailers"].append(trailer["name"])
-            click.echo("Trailer added to config file")
-        else:
-            click.echo("Trailer excluded from config file")
+    selected_trailers = inquirer.prompt(questions)
+
+    config["trailers"] = selected_trailers["trailers"]
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
