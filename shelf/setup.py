@@ -11,4 +11,5 @@ setup(
         [console_scripts]
         shelf=shelf:cli
     """,
+    pulls=4,
 )
