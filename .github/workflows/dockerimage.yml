@@ -8,14 +8,6 @@ jobs:
 
     steps:
 
-      - name: Cache Docker layers
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
       - name: Check Out Repo
         uses: actions/checkout@v2
 
