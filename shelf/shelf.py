@@ -5,16 +5,6 @@ import click
 import inquirer
 import yaml
 
-<<<<<<< HEAD
-=======
-branches = [
-    "hotfix-",
-    "release-",
-    "develop-",
-    "feature-",
-]
-
->>>>>>> 470dc30d693a7c1668b320d9d503afe452925a23
 branch_questions = [
     inquirer.Checkbox(
         "branches",
