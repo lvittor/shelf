@@ -45,8 +45,8 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ./app
-          file: ./app/Dockerfile
+          context: ./
+          file: ./Dockerfile
           target: test
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -56,8 +56,8 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ./app
-          file: ./app/Dockerfile
+          context: ./
+          file: ./Dockerfile
           target: lint
           cache-from: type=gha
           cache-to: type=gha,mode=max
