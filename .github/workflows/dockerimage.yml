@@ -41,4 +41,5 @@ jobs:
         run: echo ${{ steps.docker_build.outputs.digest }}
 
       - name: Test format
+        uses: docker/build-push-action@v2
         run: make format
