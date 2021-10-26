@@ -40,6 +40,24 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-      - name: Test format
+      - name: Test
+        id: docker_test
         uses: docker/build-push-action@v2
-        run: make format
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./app
+          file: ./app/Dockerfile
+          target: test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Lint
+        id: docker_lint
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./app
+          file: ./app/Dockerfile
+          target: lint
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
