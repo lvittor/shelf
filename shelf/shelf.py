@@ -125,6 +125,10 @@ def commit(message):
 @cli.command()
 @click.option("--new", "-n", type=str, required=False)
 def branch(message):
+    with open("shelf-config.yaml", "r") as file:
+        documents = yaml.load(file)
+    
+    # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
     a = message
     click.echo(f"{a}")
 
