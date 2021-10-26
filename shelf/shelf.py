@@ -1,15 +1,9 @@
 from pprint import pprint
 
+import re
 import click
 import inquirer
 import yaml
-
-branches=[
-    "hotfix-",
-    "release-",
-    "develop-",
-    "feature-",
-]
 
 branch_questions = [
     inquirer.Checkbox(
@@ -120,17 +114,29 @@ def init():
 @click.option("--message", "-m", type=str, required=True)
 def commit(message):
     a = message
-    click.echo(f"{a}")
+    click.echo(f"Mensaje inicial: {a}")
 
 @cli.command()
-@click.option("--new", "-n", type=str, required=False)
-def branch(message):
+@click.option("--new", "-n", type=str, required=True)
+def branch(new):
     with open("shelf-config.yaml", "r") as file:
-        documents = yaml.load(file)
-    
+        documents = yaml.safe_load(file)
+    flag = 1
+    parsed_message = new.split("-",1)[0] + "-"
+
+    for i in documents["branches"]:
+        if re.match( i.lower() + "-", parsed_message):
+            flag = 0
+    if flag == 1:
+        click.echo("Not a valid branch name.")
+        click.echo("The new branch name should have one of the following prefixes:")
+        for i in documents["branches"]:
+            click.echo(i.lower() + "-")
+    else:
+        click.echo("Branch created succesfully")
+    #Call to git function
+
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
-    a = message
-    click.echo(f"{a}")
 
 
 @cli.command()
