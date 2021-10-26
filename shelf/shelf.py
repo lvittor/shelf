@@ -4,7 +4,7 @@ import click
 import inquirer
 import yaml
 
-branches=[
+branches = [
     "hotfix-",
     "release-",
     "develop-",
@@ -122,12 +122,13 @@ def commit(message):
     a = message
     click.echo(f"{a}")
 
+
 @cli.command()
 @click.option("--new", "-n", type=str, required=False)
 def branch(message):
     with open("shelf-config.yaml", "r") as file:
         documents = yaml.load(file)
-    
+
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
     a = message
     click.echo(f"{a}")
