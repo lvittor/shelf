@@ -1,46 +1,5 @@
-#!/usr/bin/env python
+#!/bin/sh
 
-import sys
-
-
-def get_keywords() -> list:
-    keywords = [
-        "Add",
-        "Drop",
-        "Fix",
-        "Bump",
-        "Make",
-        "Start",
-        "Stop",
-        "Optimize",
-        "Document",
-        "Refactor",
-        "Reformat",
-        "Rearrange",
-        "Redraw",
-        "Reword",
-    ]
-    return keywords
-
-
-def has_valid_keyword(message: str) -> bool:
-    first_word = message.split(" ", 1)[0]
-    return first_word in get_keywords()
-
-
-def main():
-    COMMIT_MSG_FILE = sys.argv[1]
-
-    try:
-        file = open(COMMIT_MSG_FILE, "r")
-        message = file.read()
-    finally:
-        file.close()
-
-    if not has_valid_keyword(message):
-        print(f"The commit message has not a valid keyword. \n List of valid keywords: \n {get_keywords()} \n")
-        exit(1)
-
-
-if __name__ == "__main__":
-    main()
+python3 -m shelf.cli --msg-filename "$1" run-hook
+exit_code=$?
+exit $exit_code
