@@ -40,5 +40,5 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
 
-      - name: pwd
-        run: pwd
+      - name: Test format
+        run: make format
