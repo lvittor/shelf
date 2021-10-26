@@ -119,8 +119,19 @@ def init():
 @cli.command()
 @click.option("--message", "-m", type=str, required=True)
 def commit(message):
+    global pulls
+    if pulls == 0:
+        click.echo("Remember to run 'shelf pull' once in a while to avoid conflicts.")
     a = message
     click.echo(f"{a}")
+    pulls -= 1
+
+
+@cli.command()
+def pull():
+    global pulls
+    pulls = 4
+    click.echo("Successful pull.")
 
 
 @cli.command()
