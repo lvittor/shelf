@@ -4,7 +4,32 @@ import click
 import inquirer
 import yaml
 
-questions = [
+branches=[
+    "hotfix-",
+    "release-",
+    "develop-",
+    "feature-",
+]
+
+branch_questions = [
+    inquirer.Checkbox(
+        "branches",
+        message="Select the following branch categorization for your project.",
+        choices=[
+            "Feature",
+            "Hotfix",
+            "Bugfix",
+            "Release",
+            "Stage",
+            "Test",
+            "Experimental",
+            "Build",
+        ],
+        default=["Feature"],
+    )
+]
+
+trailer_questions = [
     inquirer.Checkbox(
         "trailers",
         message="Select the trailers you want to add to your project. Use the arrows to toggle any one of them.",
@@ -76,12 +101,15 @@ def cli():
 def init():
     click.echo("Initializing shelf repository")
     ### Creation of the config file
-    config = {"trailers": []}
+    config = {"trailers": [], "branches": []}
 
     ### Configuration for trailers
-    selected_trailers = inquirer.prompt(questions)
+    selected_trailers = inquirer.prompt(trailer_questions)
+    ### Configuration for branches
+    selected_branches = inquirer.prompt(branch_questions)
 
     config["trailers"] = selected_trailers["trailers"]
+    config["branches"] = selected_branches["branches"]
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
@@ -91,6 +119,12 @@ def init():
 @cli.command()
 @click.option("--message", "-m", type=str, required=True)
 def commit(message):
+    a = message
+    click.echo(f"{a}")
+
+@cli.command()
+@click.option("--new", "-n", type=str, required=False)
+def branch(message):
     a = message
     click.echo(f"{a}")
 
