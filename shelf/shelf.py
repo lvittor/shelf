@@ -1,38 +1,6 @@
 import click
 import yaml
 
-trailers = [
-    {
-        "name": "Acked-by",
-        "description": 'Owner of the affected code said "yep, looks good to me" ',
-    },
-    {
-        "name": "Bug",
-        "description": "References a bug in the Mediawiki Bugzilla installation ",
-    },
-    {"name": "CC", "description": "Person has been informed about the patch "},
-    {
-        "name": "Change-Id",
-        "description": "unique identification of a change that persists rebasing and amending ",
-    },
-    {"name": "Closes", "description": "Closes a bug"},
-    {"name": "Closes-Bug", "description": ""},
-    {"name": "Co-Authored-By", "description": ""},
-    {"name": "DocImpact", "description": ""},
-    {"name": "Git-Dch", "description": ""},
-    {"name": "Implements", "description": ""},
-    {"name": "Partial-Bug", "description": ""},
-    {"name": "Related-Bug", "description": ""},
-    {"name": "Reported-by", "description": ""},
-    {"name": "Reviewed-by", "description": ""},
-    {"name": "SecurityImpact", "description": ""},
-    {"name": "Signed-off-by", "description": ""},
-    {"name": "Suggested-by", "description": ""},
-    {"name": "Tested-by", "description": ""},
-    {"name": "Thanks", "description": ""},
-    {"name": "UpgradeImpact", "description": ""},
-]
-
 
 @click.group()
 def cli():

@@ -13,3 +13,6 @@ class Rule:
 
     def __eq__(self, other):
         return isinstance(other, Rule) and self.id == other.id
+
+    def __str__(self):
+        return f"{self.code} {self.name}"
