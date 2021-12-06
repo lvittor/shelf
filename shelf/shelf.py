@@ -1,6 +1,58 @@
+import re
+from pprint import pprint
+
 import click
+import inquirer
 import yaml
 
+branch_questions = [
+    inquirer.Checkbox(
+        "branches",
+        message="Select the following branch categorization for your project.",
+        choices=[
+            "Feature",
+            "Hotfix",
+            "Bugfix",
+            "Release",
+            "Stage",
+            "Test",
+            "Experimental",
+            "Build",
+        ],
+        default=["Feature"],
+    )
+]
+
+trailer_questions = [
+    inquirer.Checkbox(
+        "trailers",
+        message="Select the trailers you want to add to your project. Use the arrows to toggle any one of them.",
+        choices=[
+            "Acked-by",
+            "Bug",
+            "CC",
+            "Change-Id",
+            "Closes",
+            "Closes-Bug",
+            "Co-Authored-By",
+            "DocImpact",
+            "Git-Dch",
+            "Implements",
+            "Partial-Bug",
+            "Related-Bug",
+            "Reported-by",
+            "SecurityImpact",
+            "Signed-off-by",
+            "Suggested-by",
+            "Tested-by",
+            "Thanks",
+            "UpgradeImpact",
+        ],
+        default=["Acked-by"],
+    ),
+]
+
+# TODO: erase after including descriptions in the choices list.
 trailers = [
     {
         "name": "Acked-by",
@@ -43,21 +95,15 @@ def cli():
 def init():
     click.echo("Initializing shelf repository")
     ### Creation of the config file
-    config = {}
+    config = {"trailers": [], "branches": []}
 
     ### Configuration for trailers
-    click.echo("Select the default trailers for your repository: ")
-    config["trailers"] = []
-    for trailer in trailers:
-        while True:
-            response = input(trailer["name"] + "(Y/N): ").upper()
-            if response in ["Y", "N"]:
-                break
-        if response == "Y":
-            config["trailers"].append(trailer["name"])
-            click.echo("Trailer added to config file")
-        else:
-            click.echo("Trailer excluded from config file")
+    selected_trailers = inquirer.prompt(trailer_questions)
+    ### Configuration for branches
+    selected_branches = inquirer.prompt(branch_questions)
+
+    config["trailers"] = selected_trailers["trailers"]
+    config["branches"] = selected_branches["branches"]
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
@@ -68,7 +114,30 @@ def init():
 @click.option("--message", "-m", type=str, required=True)
 def commit(message):
     a = message
-    click.echo(f"{a}")
+    click.echo(f"Mensaje inicial: {a}")
+
+
+@cli.command()
+@click.option("--new", "-n", type=str, required=True)
+def branch(new):
+    with open("shelf-config.yaml", "r") as file:
+        documents = yaml.safe_load(file)
+    flag = 1
+    parsed_message = new.split("-", 1)[0] + "-"
+
+    for i in documents["branches"]:
+        if re.match(i.lower() + "-", parsed_message):
+            flag = 0
+    if flag == 1:
+        click.echo("Not a valid branch name.")
+        click.echo("The new branch name should have one of the following prefixes:")
+        for i in documents["branches"]:
+            click.echo(i.lower() + "-")
+    else:
+        click.echo("Branch created succesfully")
+    # Call to git function
+
+    # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
 
 
 @cli.command()

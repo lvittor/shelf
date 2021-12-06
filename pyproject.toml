@@ -14,6 +14,7 @@ pytest = "^6.2.5"
 click = "^8.0.3"
 PyYAML = "^5.4.1"
 setuptools = "^58.2.0"
+inquirer = "2.7.0"
 
 [tool.poetry.dev-dependencies]
 coverage = { version = "^5.5", extras = ["toml"]}
