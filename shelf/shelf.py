@@ -1,6 +1,6 @@
+import re
 from pprint import pprint
 
-import re
 import click
 import inquirer
 import yaml
@@ -123,10 +123,10 @@ def branch(new):
     with open("shelf-config.yaml", "r") as file:
         documents = yaml.safe_load(file)
     flag = 1
-    parsed_message = new.split("-",1)[0] + "-"
+    parsed_message = new.split("-", 1)[0] + "-"
 
     for i in documents["branches"]:
-        if re.match( i.lower() + "-", parsed_message):
+        if re.match(i.lower() + "-", parsed_message):
             flag = 0
     if flag == 1:
         click.echo("Not a valid branch name.")
@@ -135,7 +135,7 @@ def branch(new):
             click.echo(i.lower() + "-")
     else:
         click.echo("Branch created succesfully")
-    #Call to git function
+    # Call to git function
 
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
 
