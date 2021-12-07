@@ -1,3 +1,4 @@
+import os
 import re
 from pprint import pprint
 
@@ -104,14 +105,25 @@ def get_branch_rules(branch_name, branches):
     return branch
 
 
-def create_branches(unique_branches_keys, branches_dict):
+def create_branches(branches_keys, branches_dict):
     ## TODO: Topological sort
-    for branch in unique_branches_keys:
-        click.echo(
-            f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
+    for branch in branches_keys:
+        print(
+            os.system(
+                f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
+            )
         )
-        click.echo(f'git checkout {branches_dict[branch]["parent"]}')
-        click.echo(f'git branch {branches_dict[branch]["name"]}')
+        if os.system(
+            f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
+        ):
+            click.echo(
+                f'git checkout {branches_dict[branches_dict[branch]["parent"]]["name"]}'
+            )
+            os.system(
+                f'git checkout {branches_dict[branches_dict[branch]["parent"]]["name"]}'
+            )
+            click.echo(f'git branch {branches_dict[branch]["name"]}')
+            os.system(f'git branch {branches_dict[branch]["name"]}')
 
 
 @click.group()
@@ -122,26 +134,30 @@ def cli():
 @cli.command()
 def init():
     click.echo("Initializing shelf repository")
-    ### Creation of the config file
-    config = {"trailers": [], "branches": {}}
 
+    ### Configuration of git repository
+    if os.system("git init") or os.system(
+        'git commit --allow-empty -m "Shelf initialization"'
+    ):
+        raise click.Abort()
+
+    config = {"trailers": [], "branches": {}}
     ### Configuration for trailers
     selected_trailers = inquirer.prompt(trailer_questions)
+    config["trailers"] = selected_trailers["trailers"]
+
     ### Configuration for branches
     selected_branches = inquirer.prompt(branch_questions)
-
-    config["trailers"] = selected_trailers["trailers"]
     branches = {}
     for branch in selected_branches["branches"]:
         branches[branch] = get_branch_rules(branch, selected_branches["branches"])
-    branches["Main"] = {"name": "main", "unique": True, "parent": None}
+    branches["Main"] = {"name": "master", "unique": True, "parent": None}
+    click.echo("git rev-parse --abbrev-ref HEAD")
+    os.system("git rev-parse --abbrev-ref HEAD")
     config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
-
-    ### Configuration of git repository
-    click.echo("git init")
 
     unique_branches = [
         branch for branch in config["branches"] if config["branches"][branch]["unique"]
@@ -166,22 +182,24 @@ def branch(name):
     target_branch = None
 
     for branch in documents["branches"]:
-        print(documents["branches"][branch])
-        if not documents["branches"][branch]["unique"] and re.match(
+        if (not documents["branches"][branch]["unique"]) and re.fullmatch(
             documents["branches"][branch]["regex"], name
         ):
+            print(branch)
+            print(documents["branches"][branch]["regex"])
+            print(re.fullmatch(documents["branches"][branch]["regex"], name))
             target_branch = branch
     if target_branch is None:
         click.echo("Not a valid branch format.")
         click.echo("The new branch name should follow one of the following patterns:")
         for i in documents["branches"]:
             if not documents["branches"][i]["unique"]:
-                click.echo(f'documents["branches"][i]["regex"] for a {i} branch')
+                click.echo(f'{documents["branches"][i]["regex"]} for a {i} branch')
     else:
         click.echo(
-            f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+            f'os: git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
         )
-        click.echo(f"git checkout -b {name}")
+        click.echo(f"os: git checkout -b {name}")
         click.echo(f"Branch {name} created succesfully")
     # Call to git function
 
