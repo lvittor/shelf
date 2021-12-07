@@ -104,6 +104,16 @@ def get_branch_rules(branch_name, branches):
     return branch
 
 
+def create_branches(unique_branches_keys, branches_dict):
+    ## TODO: Topological sort
+    for branch in unique_branches_keys:
+        click.echo(
+            f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
+        )
+        click.echo(f'git checkout {branches_dict[branch]["parent"]}')
+        click.echo(f'git branch {branches_dict[branch]["name"]}')
+
+
 @click.group()
 def cli():
     pass
@@ -124,6 +134,7 @@ def init():
     branches = {}
     for branch in selected_branches["branches"]:
         branches[branch] = get_branch_rules(branch, selected_branches["branches"])
+    branches["Main"] = {"name": "main", "unique": True, "parent": None}
     config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
@@ -131,11 +142,11 @@ def init():
 
     ### Configuration of git repository
     click.echo("git init")
-    for branch in config["branches"]:
-        if config["branches"][branch]["unique"]:
-            click.echo(f'git show-ref --verify --quiet refs/heads/{config["branches"][branch]["name"]}')
-            click.echo(f'git checkout {config["branches"][branch]["parent"]}')
-            click.echo(f'git branch {config["branches"][branch]["name"]}')
+
+    unique_branches = [
+        branch for branch in config["branches"] if config["branches"][branch]["unique"]
+    ]
+    create_branches(unique_branches, config["branches"])
 
     click.echo("Initialization successful")
 
@@ -148,31 +159,33 @@ def commit(message):
 
 
 @cli.command()
-@click.option("--new", "-n", type=str, required=True)
-def branch(new):
+@click.option("--name", "-n", type=str, required=True)
+def branch(name):
     with open("shelf-config.yaml", "r") as file:
         documents = yaml.safe_load(file)
-    flag = 1
-    parsed_message = new.split("-", 1)[0] + "-"
+    target_branch = None
 
-    for i in documents["branches"]:
-        if re.match(i.lower() + "-", parsed_message):
-            flag = 0
-    if flag == 1:
-        click.echo("Not a valid branch name.")
-        click.echo("The new branch name should have one of the following prefixes:")
+    for branch in documents["branches"]:
+        print(documents["branches"][branch])
+        if not documents["branches"][branch]["unique"] and re.match(
+            documents["branches"][branch]["regex"], name
+        ):
+            target_branch = branch
+    if target_branch is None:
+        click.echo("Not a valid branch format.")
+        click.echo("The new branch name should follow one of the following patterns:")
         for i in documents["branches"]:
-            click.echo(i.lower() + "-")
+            if not documents["branches"][i]["unique"]:
+                click.echo(f'documents["branches"][i]["regex"] for a {i} branch')
     else:
-        click.echo("Branch created succesfully")
+        click.echo(
+            f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+        )
+        click.echo(f"git checkout -b {name}")
+        click.echo(f"Branch {name} created succesfully")
     # Call to git function
 
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
-
-
-@cli.command()
-def write():
-    click.echo("Dropped the database")
 
 
 if __name__ == "__main__":
