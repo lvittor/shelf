@@ -8,18 +8,19 @@ import yaml
 branch_questions = [
     inquirer.Checkbox(
         "branches",
-        message="Select the following branch categorization for your project.",
+        message="Select the following branch categorization for your project",
         choices=[
+            "Release",
+            "Develop",
             "Feature",
             "Hotfix",
             "Bugfix",
-            "Release",
             "Stage",
             "Test",
             "Experimental",
             "Build",
         ],
-        default=["Feature"],
+        default=["Release", "Develop", "Feature", "Hotfix"],
     )
 ]
 
@@ -86,6 +87,23 @@ trailers = [
 ]
 
 
+def get_branch_rules(branch_name, branches):
+    branch = {}
+    click.echo(f'Configuration of rules for branch "{branch_name}".')
+    branch["name"] = branch_name.lower()
+    branch["parent"] = inquirer.list_input(
+        "Will checkout from and merge into",
+        choices=[branch for branch in branches if branch != branch_name] + ["Main"],
+    )
+    branch["unique"] = inquirer.confirm(f"Is the branch {branch_name} unique?")
+    if not branch["unique"]:
+        branch["regex"] = inquirer.text(
+            message="Enter the regex which will identify the branch"
+        )
+
+    return branch
+
+
 @click.group()
 def cli():
     pass
@@ -95,7 +113,7 @@ def cli():
 def init():
     click.echo("Initializing shelf repository")
     ### Creation of the config file
-    config = {"trailers": [], "branches": []}
+    config = {"trailers": [], "branches": {}}
 
     ### Configuration for trailers
     selected_trailers = inquirer.prompt(trailer_questions)
@@ -103,10 +121,22 @@ def init():
     selected_branches = inquirer.prompt(branch_questions)
 
     config["trailers"] = selected_trailers["trailers"]
-    config["branches"] = selected_branches["branches"]
+    branches = {}
+    for branch in selected_branches["branches"]:
+        branches[branch] = get_branch_rules(branch, selected_branches["branches"])
+    config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
+
+    ### Configuration of git repository
+    click.echo("git init")
+    for branch in config["branches"]:
+        if config["branches"][branch]["unique"]:
+            click.echo(f'git show-ref --verify --quiet refs/heads/{config["branches"][branch]["name"]}')
+            click.echo(f'git checkout {config["branches"][branch]["parent"]}')
+            click.echo(f'git branch {config["branches"][branch]["name"]}')
+
     click.echo("Initialization successful")
 
 
