@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 from pprint import pprint
 
 import click
@@ -108,11 +109,6 @@ def get_branch_rules(branch_name, branches):
 def create_branches(branches_keys, branches_dict):
     ## TODO: Topological sort
     for branch in branches_keys:
-        print(
-            os.system(
-                f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
-            )
-        )
         if os.system(
             f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
         ):
@@ -151,9 +147,12 @@ def init():
     branches = {}
     for branch in selected_branches["branches"]:
         branches[branch] = get_branch_rules(branch, selected_branches["branches"])
-    branches["Main"] = {"name": "master", "unique": True, "parent": None}
+    branches["Main"] = {"unique": True, "parent": None}
     click.echo("git rev-parse --abbrev-ref HEAD")
     os.system("git rev-parse --abbrev-ref HEAD")
+    branches["Main"]["name"] = subprocess.check_output(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+    ).decode("UTF-8")
     config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
@@ -175,7 +174,7 @@ def commit(message):
 
 
 @cli.command()
-@click.option("--name", "-n", type=str, required=True)
+@click.option("--name", "-n", "name", type=str, required=True)
 def branch(name):
     with open("shelf-config.yaml", "r") as file:
         documents = yaml.safe_load(file)
@@ -185,22 +184,24 @@ def branch(name):
         if (not documents["branches"][branch]["unique"]) and re.fullmatch(
             documents["branches"][branch]["regex"], name
         ):
-            print(branch)
-            print(documents["branches"][branch]["regex"])
-            print(re.fullmatch(documents["branches"][branch]["regex"], name))
             target_branch = branch
+            break
     if target_branch is None:
         click.echo("Not a valid branch format.")
         click.echo("The new branch name should follow one of the following patterns:")
         for i in documents["branches"]:
             if not documents["branches"][i]["unique"]:
                 click.echo(f'{documents["branches"][i]["regex"]} for a {i} branch')
-    else:
-        click.echo(
-            f'os: git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
-        )
-        click.echo(f"os: git checkout -b {name}")
-        click.echo(f"Branch {name} created succesfully")
+        raise click.Abort()
+    click.echo(
+        f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+    )
+    os.system(
+        f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+    )
+    click.echo(f"git checkout -b {name}")
+    os.system(f"git checkout -b {name}")
+    click.echo(f"Branch {name} created succesfully")
     # Call to git function
 
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
