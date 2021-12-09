@@ -89,6 +89,25 @@ trailers = [
 ]
 
 
+# Utils
+def get_git_directory() -> str:
+    return subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).decode(
+        "UTF-8"
+    )
+
+
+def is_branch_created(branch: str) -> str:
+    return not subprocess.call(
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"]
+    )
+
+
+def get_current_branch() -> str:
+    return subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode(
+        "UTF-8"
+    )[:-1]
+
+
 def get_branch_rules(branch_name, branches):
     branch = {}
     click.echo(f'Configuration of rules for branch "{branch_name}".')
@@ -100,7 +119,7 @@ def get_branch_rules(branch_name, branches):
     branch["unique"] = inquirer.confirm(f"Is the branch {branch_name} unique?")
     if not branch["unique"]:
         branch["regex"] = inquirer.text(
-            message="Enter the regex which will identify the branch"
+            message=f"Enter the regex which will identify {branch_name}"
         )
 
     return branch
@@ -147,12 +166,7 @@ def init():
     branches = {}
     for branch in selected_branches["branches"]:
         branches[branch] = get_branch_rules(branch, selected_branches["branches"])
-    branches["Main"] = {"unique": True, "parent": None}
-    click.echo("git rev-parse --abbrev-ref HEAD")
-    os.system("git rev-parse --abbrev-ref HEAD")
-    branches["Main"]["name"] = subprocess.check_output(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"]
-    ).decode("UTF-8")
+    branches["Main"] = {"unique": True, "parent": None, "name": get_current_branch()}
     config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
@@ -205,6 +219,29 @@ def branch(name):
     # Call to git function
 
     # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
+
+
+@cli.command()
+@click.option("--delete", "-d", is_flag=True)
+def merge(delete):
+    with open("shelf-config.yaml", "r") as file:
+        documents = yaml.safe_load(file)
+    curr_branch = get_current_branch()
+    for branch, rules in documents["branches"].items():
+        if rules["unique"]:
+            if rules["name"] == curr_branch:
+                subprocess.call(
+                    ["git", "checkout", documents["branches"][rules["parent"]]["name"]]
+                )
+                subprocess.call(["git", "merge", curr_branch])
+        else:
+            if re.fullmatch(rules["regex"], curr_branch):
+                subprocess.call(
+                    ["git", "checkout", documents["branches"][rules["parent"]]["name"]]
+                )
+                subprocess.call(["git", "merge", curr_branch])
+                if delete:
+                    subprocess.call(["git", "branch", "-d", curr_branch])
 
 
 if __name__ == "__main__":
