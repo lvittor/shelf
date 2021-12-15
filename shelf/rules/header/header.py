@@ -60,10 +60,10 @@ class DotHeaderRule(HeaderRule):
 
 
 class DesiredLengthHeaderRule(HeaderRule):
-    DESIRED_LENGTH = 20
+    DESIRED_LENGTH = 10
 
     def check(self) -> bool:
         return len(self.header) >= self.DESIRED_LENGTH
 
     def __str__(self):
-        return f"Header of commit message should be longer than {self.DESIRED_LENGTH}"
+        return f"Header of commit message should be longer than {self.DESIRED_LENGTH} characters"

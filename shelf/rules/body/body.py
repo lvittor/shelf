@@ -2,9 +2,9 @@ from ..rule import Rule
 
 
 class BodyRule(Rule):
-    body = ""
+    body = []
 
-    def __init__(self, body: str):
+    def __init__(self, body: list):
         super().__init__()
         self.body = body
 
@@ -13,7 +13,10 @@ class MaxLengthBodyRule(BodyRule):
     MAX_LEN = 80
 
     def check(self) -> bool:
-        return len(self.body) <= self.MAX_LEN
+        for line in self.body:
+            if len(line) > self.MAX_LEN:
+                return False
+        return True
 
     def __str__(self):
         return (
@@ -25,7 +28,10 @@ class MinLengthBodyRule(BodyRule):
     MIN_LEN = 20
 
     def check(self) -> bool:
-        return len(self.body) >= self.MAX_LEN
+        for line in self.body:
+            if len(line) < self.MIN_LEN and line != "":
+                return False
+        return True
 
     def __str__(self):
         return f"Body of commit message should be larger than {self.MIN_LEN} characters"
@@ -33,7 +39,10 @@ class MinLengthBodyRule(BodyRule):
 
 class TrailingWhitespaceBodyRule(BodyRule):
     def check(self) -> bool:
-        return self.body.endswith(" ")
+        for line in self.body:
+            if line.endswith(" "):
+                return False
+        return True
 
     def __str__(self):
         return f"Body of commit message should not have trailing whitespaces"
@@ -41,7 +50,10 @@ class TrailingWhitespaceBodyRule(BodyRule):
 
 class HardTabBodyRule(BodyRule):
     def check(self) -> bool:
-        return "\t" in self.body
+        for line in self.body:
+            if "\t" in line:
+                return False
+        return True
 
     def __str__(self):
         return f"Body of commit message should not contain hard tab characters (\\t)"
@@ -49,7 +61,7 @@ class HardTabBodyRule(BodyRule):
 
 class BodyMissingBodyRule(BodyRule):
     def check(self) -> bool:
-        return not self.body
+        return False if not self.body else True
 
     def __str__(self):
         return f"Body message must be specified"

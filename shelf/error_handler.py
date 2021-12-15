@@ -1,23 +1,19 @@
+import subprocess
+
+from rules.body.body import (
+    BodyMissingBodyRule,
+    HardTabBodyRule,
+    MaxLengthBodyRule,
+    MinLengthBodyRule,
+    TrailingWhitespaceBodyRule,
+)
 from rules.header.header import (
     DesiredLengthHeaderRule,
     DotHeaderRule,
     KeywordHeaderRule,
     MaxLengthHeaderRule,
 )
-
-from rules.trailers.trailers import (
-    KeywordTrailersRule
-) 
-
-from rules.body.body import (
-    MaxLengthBodyRule,
-    MinLengthBodyRule,
-    TrailingWhitespaceBodyRule,
-    HardTabBodyRule,
-    BodyMissingBodyRule
-)
-
-from sh import git
+from rules.trailers.trailers import KeywordTrailersRule
 
 
 class ErrorHandler:
@@ -28,69 +24,69 @@ class ErrorHandler:
         DesiredLengthHeaderRule,
     ]
 
-    trailers_rules = [
-        KeywordTrailersRule
-    ]
+    trailers_rules = [KeywordTrailersRule]
 
     body_rules = [
         MaxLengthBodyRule,
         MinLengthBodyRule,
         TrailingWhitespaceBodyRule,
         HardTabBodyRule,
-        BodyMissingBodyRule
+        BodyMissingBodyRule,
     ]
 
     @classmethod
-    def get_header(cls, commit_msg):
+    def get_header(cls, commit_msg: str):
         return commit_msg.split("\n")[0]
 
     @classmethod
-    def get_trailers(cls, commit_msg):
-        # str_trailers = "" # echo "commit_msg" | git interpret-trailers --only-trailers
-        # line_trailers = str_trailers.split("\n")
-        # keywords = []
-        # for trailer in line_trailers:
-        #     keywords.append(trailer.split(":"))
-        # return keywords
-        pass 
-    
-    @classmethod
-    def get_body(cls, commit_msg):
-        pass 
+    def get_trailers(cls, commit_msg: str):
+        str_trailers = subprocess.check_output(
+            ["git", "interpret-trailers", "--only-trailers"],
+            input=f"{commit_msg}",
+            text=True,
+        ).strip()
+        if not str_trailers:
+            return [], []
+        trailers = str_trailers.split("\n")
+        trailers_key_val = []
+        for trailer in trailers:
+            trailers_key_val.append(trailer.split(":", maxsplit=1))
+        return trailers_key_val, trailers
 
+    @classmethod
+    def get_body(cls, commit_msg: str, trailers: str):
+        try:
+            body_and_trailers = commit_msg.split("\n", 2)[2]
+        except:
+            return []
+        body_lines = []
+        for line in body_and_trailers.split("\n"):
+            if line not in trailers:
+                body_lines.append(line)
+        return body_lines
 
     @classmethod
     def check_commit_msg(cls, commit_msg):
         errors = []
-        errors.extend(cls.check_header(header=get_header(commit_msg))
-        #errors.extend(cls.check_trailers(trailers=get_trailers(commit_msg)))
-        #errors.extend(cls.check_body(body=get_body(commit_msg)))
+        errors.extend(
+            cls.check_errors(rules=cls.header_rules, words=cls.get_header(commit_msg))
+        )
+        trailers_key_val, trailers = cls.get_trailers(commit_msg)
+        errors.extend(
+            cls.check_errors(rules=cls.trailers_rules, words=trailers_key_val)
+        )
+        errors.extend(
+            cls.check_errors(
+                rules=cls.body_rules, words=cls.get_body(commit_msg, trailers)
+            )
+        )
         return errors
 
     @classmethod
-    def check_header(cls, header):
+    def check_errors(cls, rules: list, words: list):
         errors = []
-        for rule in cls.header_rules:
-            current_rule = rule(header)
+        for rule in rules:
+            current_rule = rule(words)
             if not current_rule.check():
                 errors.append(current_rule)
-
         return errors
-
-    @classmethod
-    def check_trailers(cls, trailers):
-        errors = []
-        for rule in cls.trailers_rules:
-            current_rule = rule(trailers)
-            if not current_rule.check():
-                errors.append(current_rule)
-
-        return erros
-
-    @classmethod
-    def check_body(cls, body):
-        errors = []
-        for rule in cls.body_rules:
-            current_rule = rule(body)
-            if not current_rule.check():
-                errors.append(current_rule)
