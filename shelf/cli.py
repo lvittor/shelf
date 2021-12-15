@@ -28,9 +28,9 @@ def run_hook(ctx):
     finally:
         file.close()
     errors = ErrorHandler.check_commit_msg(commit_msg=message)
-    print("-----------------------------")
-    print(message)
-    print("-----------------------------")
+    # print("-----------------------------")
+    # print(message)
+    # print("-----------------------------")
     for error in errors:
         print(error)
     ctx.exit(len(errors))
