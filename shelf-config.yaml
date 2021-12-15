@@ -1,0 +1,21 @@
+branches:
+  Develop:
+    name: develop
+    parent: Release
+    unique: true
+  Feature:
+    name: feature
+    parent: Develop
+    regex: feature/*
+    unique: false
+  Hotfix:
+    name: hotfix
+    parent: Main
+    regex: hotfix/*
+    unique: false
+  Release:
+    name: release
+    parent: Main
+    unique: true
+trailers:
+- Acked-by

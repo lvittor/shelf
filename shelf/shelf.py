@@ -1,5 +1,111 @@
+import os
+import re
+import subprocess
+from pprint import pprint
+
 import click
+import inquirer
 import yaml
+
+branch_questions = [
+    inquirer.Checkbox(
+        "branches",
+        message="Select the following branch categorization for your project",
+        choices=[
+            "Release",
+            "Develop",
+            "Feature",
+            "Hotfix",
+            "Bugfix",
+            "Stage",
+            "Test",
+            "Experimental",
+            "Build",
+        ],
+        default=["Release", "Develop", "Feature", "Hotfix"],
+    )
+]
+
+trailer_questions = [
+    inquirer.Checkbox(
+        "trailers",
+        message="Select the trailers you want to add to your project. Use the arrows to toggle any one of them",
+        choices=[
+            "Acked-by",
+            "Bug",
+            "CC",
+            "Change-Id",
+            "Closes",
+            "Closes-Bug",
+            "Co-Authored-By",
+            "DocImpact",
+            "Git-Dch",
+            "Implements",
+            "Partial-Bug",
+            "Related-Bug",
+            "Reported-by",
+            "SecurityImpact",
+            "Signed-off-by",
+            "Suggested-by",
+            "Tested-by",
+            "Thanks",
+            "UpgradeImpact",
+        ],
+        default=["Acked-by"],
+    ),
+]
+
+
+# Utils
+def get_git_directory() -> str:
+    return subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).decode(
+        "UTF-8"
+    )
+
+
+def is_branch_created(branch: str) -> str:
+    return not subprocess.call(
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"]
+    )
+
+
+def get_current_branch() -> str:
+    return subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode(
+        "UTF-8"
+    )[:-1]
+
+
+def get_branch_rules(branch_name, branches):
+    branch = {}
+    click.echo(f'Configuration of rules for branch "{branch_name}".')
+    branch["name"] = branch_name.lower()
+    branch["parent"] = inquirer.list_input(
+        "Will checkout from and merge into",
+        choices=[branch for branch in branches if branch != branch_name] + ["Main"],
+    )
+    branch["unique"] = inquirer.confirm(f"Is the branch {branch_name} unique?")
+    if not branch["unique"]:
+        branch["regex"] = inquirer.text(
+            message=f"Enter the regex which will identify {branch_name}"
+        )
+
+    return branch
+
+
+def create_branches(branches_keys, branches_dict):
+    ## TODO: Topological sort
+    for branch in branches_keys:
+        if os.system(
+            f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
+        ):
+            click.echo(
+                f'git checkout {branches_dict[branches_dict[branch]["parent"]]["name"]}'
+            )
+            os.system(
+                f'git checkout {branches_dict[branches_dict[branch]["parent"]]["name"]}'
+            )
+            click.echo(f'git branch {branches_dict[branch]["name"]}')
+            os.system(f'git branch {branches_dict[branch]["name"]}')
 
 
 @click.group()
@@ -10,25 +116,34 @@ def cli():
 @cli.command()
 def init():
     click.echo("Initializing shelf repository")
-    ### Creation of the config file
-    config = {}
 
+    ### Configuration of git repository
+    if os.system("git init") or os.system(
+        'git commit --allow-empty -m "Shelf initialization"'
+    ):
+        raise click.Abort()
+
+    config = {"trailers": [], "branches": {}}
     ### Configuration for trailers
-    click.echo("Select the default trailers for your repository: ")
-    config["trailers"] = []
-    for trailer in trailers:
-        while True:
-            response = input(trailer["name"] + "(Y/N): ").upper()
-            if response in ["Y", "N"]:
-                break
-        if response == "Y":
-            config["trailers"].append(trailer["name"])
-            click.echo("Trailer added to config file")
-        else:
-            click.echo("Trailer excluded from config file")
+    selected_trailers = inquirer.prompt(trailer_questions)
+    config["trailers"] = selected_trailers["trailers"]
+
+    ### Configuration for branches
+    selected_branches = inquirer.prompt(branch_questions)
+    branches = {}
+    for branch in selected_branches["branches"]:
+        branches[branch] = get_branch_rules(branch, selected_branches["branches"])
+    branches["Main"] = {"unique": True, "parent": None, "name": get_current_branch()}
+    config["branches"] = branches
 
     with open(r"shelf-config.yaml", "w") as file:
         documents = yaml.dump(config, file)
+
+    unique_branches = [
+        branch for branch in config["branches"] if config["branches"][branch]["unique"]
+    ]
+    create_branches(unique_branches, config["branches"])
+
     click.echo("Initialization successful")
 
 
@@ -36,12 +151,64 @@ def init():
 @click.option("--message", "-m", type=str, required=True)
 def commit(message):
     a = message
-    click.echo(f"{a}")
+    click.echo(f"Mensaje inicial: {a}")
 
 
 @cli.command()
-def write():
-    click.echo("Dropped the database")
+@click.option("--name", "-n", "name", type=str, required=True)
+def branch(name):
+    with open("shelf-config.yaml", "r") as file:
+        documents = yaml.safe_load(file)
+    target_branch = None
+
+    for branch in documents["branches"]:
+        if (not documents["branches"][branch]["unique"]) and re.fullmatch(
+            documents["branches"][branch]["regex"], name
+        ):
+            target_branch = branch
+            break
+    if target_branch is None:
+        click.echo("Not a valid branch format.")
+        click.echo("The new branch name should follow one of the following patterns:")
+        for i in documents["branches"]:
+            if not documents["branches"][i]["unique"]:
+                click.echo(f'{documents["branches"][i]["regex"]} for a {i} branch')
+        raise click.Abort()
+    click.echo(
+        f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+    )
+    os.system(
+        f'git checkout {documents["branches"][documents["branches"][target_branch]["parent"]]["name"]}'
+    )
+    click.echo(f"git checkout -b {name}")
+    os.system(f"git checkout -b {name}")
+    click.echo(f"Branch {name} created succesfully")
+    # Call to git function
+
+    # para acceder: txt = documents["root"](<-- si es que hay)["branches"]
+
+
+@cli.command()
+@click.option("--delete", "-d", is_flag=True)
+def merge(delete):
+    with open("shelf-config.yaml", "r") as file:
+        documents = yaml.safe_load(file)
+    curr_branch = get_current_branch()
+    for branch, rules in documents["branches"].items():
+        if rules["unique"]:
+            if rules["name"] == curr_branch:
+                subprocess.call(
+                    ["git", "checkout", documents["branches"][rules["parent"]]["name"]]
+                )
+                subprocess.call(["git", "merge", curr_branch])
+        else:
+            if re.fullmatch(rules["regex"], curr_branch):
+                subprocess.call(
+                    ["git", "checkout", documents["branches"][rules["parent"]]["name"]]
+                )
+                subprocess.call(["git", "merge", curr_branch])
+                if delete:
+                    subprocess.call(["git", "branch", "-d", curr_branch])
 
 
 if __name__ == "__main__":
