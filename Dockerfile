@@ -45,11 +45,10 @@ RUN poetry install && apt-get update && apt-get install --no-install-recommends 
 WORKDIR /shelf
 COPY . .
 
-RUN git init && git config --local user.email "test@test.com" && git config --local user.name "test"
-
 RUN cd shelf && pip install --editable . 
 
-RUN cp shelf/hook_samples/commit-msg .git/hooks/ && chmod +x .git/hooks/commit-msg
+RUN git config --global user.email "test@test.com" && git config --global user.name "test"
+#RUN cp shelf/hook_samples/commit-msg tests/shelf/.git/hooks/ && chmod +x tests/shelf/.git/hooks/commit-msg
 
 # 'lint' stage runs black and isort
 # running in check mode means build will fail if any linting errors occur
@@ -68,4 +67,4 @@ FROM python-base as production
 COPY --from=builder-base $VENV_PATH $VENV_PATH
 
 COPY . /shelf
-WORKDIR /shelf
+WORKDIR /shelf/tests/shelf

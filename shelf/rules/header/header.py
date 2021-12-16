@@ -1,3 +1,5 @@
+from utils import get_git_directory
+
 from ..rule import Rule
 
 
@@ -11,22 +13,11 @@ class HeaderRule(Rule):
 
 class KeywordHeaderRule(HeaderRule):
     def get_keywords(self) -> list:
-        keywords = [
-            "Add",
-            "Drop",
-            "Fix",
-            "Bump",
-            "Make",
-            "Start",
-            "Stop",
-            "Optimize",
-            "Document",
-            "Refactor",
-            "Reformat",
-            "Rearrange",
-            "Redraw",
-            "Reword",
-        ]
+        import yaml
+
+        with open(f"{get_git_directory()}/shelf.yml", "r") as f:
+            doc = yaml.load(f, Loader=yaml.FullLoader)
+        keywords = doc["header_keywords"]
         return keywords
 
     def check(self) -> bool:

@@ -61,7 +61,7 @@ class ErrorHandler:
             return []
         body_lines = []
         for line in body_and_trailers.split("\n"):
-            if line not in trailers:
+            if line not in trailers and "#" not in line:
                 body_lines.append(line)
         return body_lines
 

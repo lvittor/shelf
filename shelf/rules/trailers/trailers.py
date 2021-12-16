@@ -1,3 +1,5 @@
+from utils import get_git_directory
+
 from ..rule import Rule
 
 
@@ -12,29 +14,14 @@ class TrailersRule(Rule):
                 key, value = trailer
                 self.trailers_key.append(key)
 
+
 class KeywordTrailersRule(TrailersRule):
     def get_keywords(self) -> list:
-        keywords = [
-            "Acked-by",
-            "Bug",
-            "CC",
-            "Change-Id",
-            "Closes-Bug",
-            "Co-Authored-By",
-            "DocImpact",
-            "Git-Dch",
-            "Implements",
-            "Partial-Bug",
-            "Related-Bug",
-            "Reported-by",
-            "Reviewed-by",
-            "SecurityImpact",
-            "Signed-off-by",
-            "Suggested-by",
-            "Tested-by",
-            "Thanks",
-            "UpgradeImpact",
-        ]
+        import yaml
+
+        with open(f"{get_git_directory()}/shelf.yml", "r") as f:
+            doc = yaml.load(f, Loader=yaml.FullLoader)
+        keywords = doc["trailers"]
         return keywords
 
     def check(self) -> list:

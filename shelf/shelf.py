@@ -6,6 +6,8 @@ from pprint import pprint
 import click
 import inquirer
 import yaml
+from error_handler import ErrorHandler
+from utils import get_current_branch
 
 branch_questions = [
     inquirer.Checkbox(
@@ -25,6 +27,31 @@ branch_questions = [
         default=["Release", "Develop", "Feature", "Hotfix"],
     )
 ]
+
+keywords_questions = [
+    inquirer.Checkbox(
+        "header_keywords",
+        message="Select the valid keywords for commit headers",
+        choices=[
+            "Add",
+            "Drop",
+            "Fix",
+            "Bump",
+            "Make",
+            "Start",
+            "Stop",
+            "Optimize",
+            "Document",
+            "Refactor",
+            "Reformat",
+            "Rearrange",
+            "Redraw",
+            "Reword",
+        ],
+        default=["Add", "Fix", "Refactor", "Reformat"],
+    )
+]
+
 
 trailer_questions = [
     inquirer.Checkbox(
@@ -56,23 +83,55 @@ trailer_questions = [
 ]
 
 
-# Utils
-def get_git_directory() -> str:
-    return subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).decode(
-        "UTF-8"
-    )
+class DefaultCommandGroup(click.Group):
+    """allow a default command for a group"""
+
+    def command(self, *args, **kwargs):
+        default_command = kwargs.pop("default_command", False)
+        if default_command and not args:
+            kwargs["name"] = kwargs.get("name", "<>")
+        decorator = super(DefaultCommandGroup, self).command(*args, **kwargs)
+
+        if default_command:
+
+            def new_decorator(f):
+                cmd = decorator(f)
+                self.default_command = cmd.name
+                return cmd
+
+            return new_decorator
+
+        return decorator
+
+    def resolve_command(self, ctx, args):
+        try:
+            # test if the command parses
+            return super(DefaultCommandGroup, self).resolve_command(ctx, args)
+        except click.UsageError:
+            # command did not parse, assume it is the default command
+            args.insert(0, self.default_command)
+            return super(DefaultCommandGroup, self).resolve_command(ctx, args)
 
 
-def is_branch_created(branch: str) -> str:
-    return not subprocess.call(
-        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"]
-    )
+@click.group(cls=DefaultCommandGroup)
+@click.option(
+    "--msg-filename",
+    help="Path to a file containing a commit message.",
+)
+@click.pass_context
+def cli(ctx, msg_filename):
+    ctx.obj = Context(msg_filename)
 
 
-def get_current_branch() -> str:
-    return subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode(
-        "UTF-8"
-    )[:-1]
+@cli.command(
+    default_command=True,
+    context_settings=dict(
+        ignore_unknown_options=True,
+    ),
+)
+@click.argument("args", nargs=-1)
+def git(args):
+    subprocess.call(["git"] + list(args))
 
 
 def get_branch_rules(branch_name, branches):
@@ -93,7 +152,6 @@ def get_branch_rules(branch_name, branches):
 
 
 def create_branches(branches_keys, branches_dict):
-    ## TODO: Topological sort
     for branch in branches_keys:
         if os.system(
             f'git show-ref --verify --quiet refs/heads/{branches_dict[branch]["name"]}'
@@ -108,22 +166,28 @@ def create_branches(branches_keys, branches_dict):
             os.system(f'git branch {branches_dict[branch]["name"]}')
 
 
-@click.group()
-def cli():
-    pass
-
-
 @cli.command()
 def init():
     click.echo("Initializing shelf repository")
 
     ### Configuration of git repository
     if os.system("git init") or os.system(
-        'git commit --allow-empty -m "Shelf initialization"'
+        'git commit --allow-empty -m "Add shelf init"'
     ):
         raise click.Abort()
 
-    config = {"trailers": [], "branches": {}}
+    with open(".git/hooks/commit-msg", "w") as commit_msg:
+        commit_msg.write(
+            '#!/bin/sh\nshelf --msg-filename "$1" run-hook\nexit_code=$?\nexit $exit_code\n'
+        )
+
+    os.chmod(".git/hooks/commit-msg", 0o777)
+
+    config = {"header_keywords": {}, "trailers": [], "branches": {}}
+    ### Configuration for header_keywords
+    selected_header_keywords = inquirer.prompt(keywords_questions)
+    config["header_keywords"] = selected_header_keywords["header_keywords"]
+
     ### Configuration for trailers
     selected_trailers = inquirer.prompt(trailer_questions)
     config["trailers"] = selected_trailers["trailers"]
@@ -136,7 +200,7 @@ def init():
     branches["Main"] = {"unique": True, "parent": None, "name": get_current_branch()}
     config["branches"] = branches
 
-    with open(r"shelf-config.yaml", "w") as file:
+    with open(r"shelf.yml", "w") as file:
         documents = yaml.dump(config, file)
 
     unique_branches = [
@@ -147,17 +211,34 @@ def init():
     click.echo("Initialization successful")
 
 
-@cli.command()
-@click.option("--message", "-m", type=str, required=True)
-def commit(message):
-    a = message
-    click.echo(f"Mensaje inicial: {a}")
+class Context:
+    def __init__(self, msg_filename):
+        self.msg_filename = msg_filename
+
+
+@cli.command("run-hook")
+@click.pass_context
+def run_hook(ctx):
+    msg_filename = ctx.obj.msg_filename
+
+    try:
+        file = open(msg_filename, "r")
+        message = file.read()
+    finally:
+        file.close()
+    errors = ErrorHandler.check_commit_msg(commit_msg=message)
+    print("-----------------------------")
+    print(message)
+    print("-----------------------------")
+    for error in errors:
+        print(error)
+    ctx.exit(len(errors))
 
 
 @cli.command()
 @click.option("--name", "-n", "name", type=str, required=True)
-def branch(name):
-    with open("shelf-config.yaml", "r") as file:
+def start(name):
+    with open("shelf.yaml", "r") as file:
         documents = yaml.safe_load(file)
     target_branch = None
 
@@ -190,8 +271,8 @@ def branch(name):
 
 @cli.command()
 @click.option("--delete", "-d", is_flag=True)
-def merge(delete):
-    with open("shelf-config.yaml", "r") as file:
+def finish(delete):
+    with open("shelf.yml", "r") as file:
         documents = yaml.safe_load(file)
     curr_branch = get_current_branch()
     for branch, rules in documents["branches"].items():

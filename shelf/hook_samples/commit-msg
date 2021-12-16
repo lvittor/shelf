@@ -1,0 +1,5 @@
+#!/bin/sh
+ 
+shelf --msg-filename "$1" run-hook
+exit_code=$?
+exit $exit_code
