@@ -180,23 +180,11 @@ def init():
 
     click.echo("Initializing shelf repository")
 
-    ### Configuration of git repository
-    if os.system("git init") or os.system(
-        'git commit --allow-empty -m "Add shelf init"'
-    ):
-        raise click.Abort()
-
-    with open(".git/hooks/commit-msg", "w") as commit_msg:
-        commit_msg.write(
-            '#!/bin/sh\nshelf --msg-filename "$1" run-hook\nexit_code=$?\nexit $exit_code\n'
-        )
-
-    os.chmod(".git/hooks/commit-msg", 0o777)
-
     config = {"header_keywords": {}, "trailers": [], "branches": {}}
     ### Configuration for header_keywords
     selected_header_keywords = inquirer.prompt(keywords_questions)
     config["header_keywords"] = selected_header_keywords["header_keywords"]
+    config["header_keywords"].append("Merge")
 
     ### Configuration for trailers
     selected_trailers = inquirer.prompt(trailer_questions)
@@ -207,11 +195,29 @@ def init():
     branches = {}
     for branch in selected_branches["branches"]:
         branches[branch] = get_branch_rules(branch, selected_branches["branches"])
+
+    ### Configuration of git repository
+    if os.system("git init") or os.system(
+        'git commit --allow-empty -m "Initialize shelf repository"'
+    ):
+        raise click.Abort()
+
     branches["Main"] = {"unique": True, "parent": None, "name": get_current_branch()}
     config["branches"] = branches
-
     with open(r"shelf.yml", "w") as file:
         documents = yaml.dump(config, file)
+
+    if os.system("git add shelf.yml") or os.system(
+        'git commit -m "Add shelf configuration file"'
+    ):
+        raise click.Abort()
+
+    with open(".git/hooks/commit-msg", "w") as commit_msg:
+        commit_msg.write(
+            '#!/bin/sh\nshelf --msg-filename "$1" run-hook\nexit_code=$?\nexit $exit_code\n'
+        )
+
+    os.chmod(".git/hooks/commit-msg", 0o777)
 
     unique_branches = [
         branch for branch in config["branches"] if config["branches"][branch]["unique"]
@@ -300,6 +306,11 @@ def finish(delete):
                 subprocess.call(["git", "merge", curr_branch])
                 if delete:
                     subprocess.call(["git", "branch", "-d", curr_branch])
+
+
+@cli.command()
+def tree():
+    subprocess.call(["git", "log", "--all", "--decorate", "--oneline", "--graph"])
 
 
 if __name__ == "__main__":
