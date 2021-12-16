@@ -168,6 +168,16 @@ def create_branches(branches_keys, branches_dict):
 
 @cli.command()
 def init():
+
+    click.echo("")
+    click.echo("  ███████╗██╗  ██╗███████╗██╗     ███████╗    ")
+    click.echo("  ██╔════╝██║  ██║██╔════╝██║     ██╔════╝    ")
+    click.echo("  ███████╗███████║█████╗  ██║     █████╗      ")
+    click.echo("  ╚════██║██╔══██║██╔══╝  ██║     ██╔══╝      ")
+    click.echo("  ███████║██║  ██║███████╗██████████╗    ██║  ")
+    click.echo("  ╚══════╝╚═╝  ╚═╝╚══════╝╚═════════╝    ╚═╝  ")
+    click.echo("")
+
     click.echo("Initializing shelf repository")
 
     ### Configuration of git repository
